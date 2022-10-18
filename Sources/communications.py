@@ -40,8 +40,8 @@ upnp = upnpy.UPnP()
 devices = upnp.discover()
 device = upnp.get_igd()
 device.get_services()
-service = device['WANPPPConnection.1']
-service.get_actions()
+service = device['WANPPPConn1']
+#print(service.get_actions())
 
 def string_to_address(address:str):
     address = address.strip("()")
@@ -77,7 +77,7 @@ def parse_command(line:str):
         input.rprint("info                  | displays all active connections")
         pass
 
-def parse_stream(line:str,src:tuple(str,int)):
+def parse_stream(line:str,src:tuple[str,int]):
     cmd = line.split()
     cmd[0] = cmd[0].lower()
 
@@ -106,17 +106,17 @@ def parse_stream(line:str,src:tuple(str,int)):
         if cmd[1] in pending_connections:
             input.rprint(f"[{cmd[1]}][{cmd[2]}]:{line[len(cmd[1])+len(cmd[2])+5:]}") 
 
-def msg_usr(msg:str,dest:tuple(str,int)):
+def msg_usr(msg:str,dest:tuple[str,int]):
     send(f"msg {USERNAME} {datetime.now()} {msg}",dest)
 
-def ping(dest:tuple(str,int)):
+def ping(dest:tuple[str,int]):
     pinged_peers[dest] = int(time.time())*1000
     send(f"ping {USERNAME}",dest)
 
-def pong(dest:tuple(str,int)):
+def pong(dest:tuple[str,int]):
     send(f"pong {USERNAME}")
 
-def send(message:str,dest:tuple(str,int)):
+def send(message:str,dest:tuple[str,int]):
     global udp_socket
     global USERNAME
     udp_socket.sendto(message.encode("ASCII"),dest)
@@ -145,14 +145,13 @@ def receive():
         pass
 
 def start():
-    service.RemovePortMapping.get_input_arguments()
     service.AddPortMapping(
         NewRemoteHost='',
         NewExternalPort=config["port"],
         NewProtocol='UDP',
         NewInternalPort=config["port"],
-        NewInternalClient=socket.gethostbyname(socket.gethostname()),
-        NewEnabled=1,
+        NewInternalClient=socket.gethostbyname_ex(socket.gethostname())[-1][0],
+        NewEnabled=True,
         NewPortMappingDescription='Mokaccino device temporary port',
         NewLeaseDuration=0
     )
