@@ -76,7 +76,7 @@ def parse_command(line:str):
         input.rprint(open_connections[cmd[1]])
 
     elif cmd[0] == "connect":
-        send(f"connect {cmd[1]}",(cmd[1],23232))
+        send(f"connect {cmd[1]} {USERNAME}",(cmd[1],23232))
 
     elif cmd[0] == "help":
         input.rprint("CommandList:")
@@ -94,7 +94,7 @@ def parse_stream(line:str,src:tuple[str,int]):
 
     if cmd[0] == "connect" and config["autoconnect"]:
         send(f"handshake {USERNAME}",src)
-        pending_connections[cmd[1]] = src
+        pending_connections[cmd[2]] = src
     
     elif cmd[0] == "connect" and not config["autoconnect"]:
         input.rprint(f"User {src} wants to connect, to accept: type in | handshake {src[0]}")
