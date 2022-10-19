@@ -39,7 +39,14 @@ downstream_mutex = threading.Semaphore(1)
 upnp = upnpy.UPnP()
 devices = upnp.discover()
 device = upnp.get_igd()
-service = device['WANPPPConn1']
+service = None
+for s in device.get_services():
+    for action in s.get_actions():
+        if action.name == "AddPortMapping":
+            service = s
+            break
+    if service is not None:
+        break
 #print(service.get_actions())
 
 def string_to_address(address:str):
