@@ -1,6 +1,7 @@
 import os
 import Sources.input as input
 import Sources.communications as communications
+import time
 
 
 input.start()
@@ -17,6 +18,7 @@ try:
             communications.parse_command(command)
         if len(communications.open_connections) == 0:
             communications.parse_command("connect ettorecraft.ddns.net")
+            time.sleep(1)
 
 except KeyboardInterrupt:
     input.rprint("Exited Successfully",end="\n")
