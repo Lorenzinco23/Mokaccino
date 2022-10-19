@@ -39,7 +39,6 @@ downstream_mutex = threading.Semaphore(1)
 upnp = upnpy.UPnP()
 devices = upnp.discover()
 device = upnp.get_igd()
-device.get_services()
 service = device['WANPPPConn1']
 #print(service.get_actions())
 
@@ -67,6 +66,10 @@ def parse_command(line:str):
 
     elif cmd[0] == "info":
         input.rprint(open_connections[cmd[1]])
+
+    elif cmd[0] == "connect":
+        send(f"connect {cmd[1]}",(cmd[1],23232))
+
     elif cmd[0] == "help":
         input.rprint("CommandList:")
         input.rprint("request <user>        | asks the database for users IP and establishes connection")
@@ -86,7 +89,7 @@ def parse_stream(line:str,src:tuple[str,int]):
         pending_connections[cmd[1]] = src
     
     elif cmd[0] == "connect" and not config["autoconnect"]:
-        pass
+        input.rprint(f"User {src} wants to connect, to accept: type in | handshake {src[0]}")
     elif cmd[0] == "handshake":
         if cmd[1] in pending_connections:
             send("connected",cmd[1])
@@ -123,7 +126,7 @@ def send(message:str,dest:tuple[str,int]):
 
 def searchuser(user):
     send(f"REQUEST {user} {USERNAME}")
-    input.rprint(receive())
+    input.rprint("Search request sent, waiting for response...")
 
 def receive():
     try:
@@ -145,15 +148,17 @@ def receive():
         pass
 
 def start():
-    service.AddPortMapping(
-        NewRemoteHost='',
+    print(service.get_actions())
+    print(service.DeletePortMapping.get_input_arguments())
+    '''service.AddPortMapping(
+        NewRemoteHost="",
         NewExternalPort=config["port"],
-        NewProtocol='UDP',
+        NewProtocol="UDP",
         NewInternalPort=config["port"],
-        NewInternalClient=socket.gethostbyname_ex(socket.gethostname())[-1][0],
-        NewEnabled=True,
-        NewPortMappingDescription='Mokaccino device temporary port',
-        NewLeaseDuration=0
-    )
+        NewInternalClient="1.1.1.1",
+        NewEnabled=1,
+        NewPortMappingDescription='Mokaccino',
+        NewLeaseDuration=""
+    )'''
     downstream = threading.Thread(target=receive)
     downstream.start()

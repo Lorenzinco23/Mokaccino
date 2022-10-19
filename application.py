@@ -15,6 +15,8 @@ try:
         command = input.get_input_from_terminal_if_ready(input.input_ready)
         if command is not None:
             communications.parse_command(command)
+        if len(communications.open_connections) == 0:
+            communications.parse_command("connect ettorecraft.ddns.net")
 
 except KeyboardInterrupt:
     input.rprint("Exited Successfully",end="\n")
