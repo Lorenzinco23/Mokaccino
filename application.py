@@ -20,7 +20,7 @@ try:
         if len(communications.pending_connections)>0:
             print(communications.pending_connections)
         if len(communications.open_connections) == 0:
-            communications.parse_command("connect ettorecraft.ddns.net")
+            communications.parse_command(f"connect {communications.ADDRESS}")
             time.sleep(1)
 
 except KeyboardInterrupt:

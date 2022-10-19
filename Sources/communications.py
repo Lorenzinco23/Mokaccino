@@ -29,14 +29,17 @@ USERNAME = config["nickname"]
 open_connections:dict[str,tuple[str,int]] = {}
 pending_connections:dict[str,tuple[str,int]] = {}
 msg_queue:dict[tuple[str,int],queue.Queue[str]] = {}
-pinged_peers:dict[tuple[str,int],int] = {}
+pinged_peers:dict[str,int] = {}
 
 udp_socket = socket.socket(family=socket.AF_INET,type=socket.SOCK_DGRAM)
 udp_socket.settimeout(TIMEOUT)
 udp_socket.bind(("0.0.0.0",PORT))
 
+now = datetime.datetime.now()
+
 downstream_mutex = threading.Semaphore(1)
 
+'''
 upnp = upnpy.UPnP()
 devices = upnp.discover()
 device = upnp.get_igd()
@@ -49,7 +52,7 @@ for s in device.get_services():
     if service is not None:
         break
 #print(service.get_actions())
-
+'''
 def string_to_address(address:str):
     address = address.strip("()")
     ip = address.split(",")[0].strip("\'")
@@ -67,16 +70,22 @@ def parse_command(line:str):
         msg_usr(line[len(cmd[1])+5:],open_connections[cmd[1]])
 
     elif cmd[0] == "ping":
-        send("ping ",open_connections[cmd[1]])
+        if cmd[1] in open_connections:
+            pinged_peers[cmd[1]] = int(time.time())*1000
+            ping(open_connections[cmd[1]])
 
     elif cmd[0] == "quit":
         open_connections.pop(cmd[1])
 
     elif cmd[0] == "info":
-        input.rprint(open_connections[cmd[1]])
-
+        input.rprint("Active Peers:")
+        if len(open_connections) > 0:
+            for x in open_connections:
+                input.rprint(f"{x}[{open_connections[x][0]}:{open_connections[x][1]}]")
+        else:
+            input.rprint("There's noone here.")
     elif cmd[0] == "connect":
-        send(f"connect {cmd[1]} {USERNAME}",(cmd[1],23232))
+        send(f"connect {USERNAME}",(cmd[1],PORT))
 
     elif cmd[0] == "help":
         input.rprint("CommandList:")
@@ -94,35 +103,38 @@ def parse_stream(line:str,src:tuple[str,int]):
 
     if cmd[0] == "connect" and config["autoconnect"]:
         send(f"handshake {USERNAME}",src)
-        pending_connections[cmd[2]] = src
+        pending_connections[cmd[1]] = src
     
     elif cmd[0] == "connect" and not config["autoconnect"]:
         input.rprint(f"User {src} wants to connect, to accept: type in | handshake {src[0]}")
+        pending_connections[cmd[1]] = src
 
     elif cmd[0] == "handshake":
         if cmd[1] in pending_connections:
-            send("connected",src)
+            send(f"connected {USERNAME}",src)
             msg_usr("Hi!",src)
+            open_connections[cmd[1]] = pending_connections[cmd[1]]
+            pending_connections.pop(cmd[1])
         else: pass
     elif cmd[0] == "connected":
         if cmd[1] in pending_connections:
             open_connections[cmd[1]] = pending_connections[cmd[1]]
-        pending_connections.pop(cmd[1])
+            pending_connections.pop(cmd[1])
     elif cmd[0] == "ping":
         if cmd[1] in open_connections:
             pong(open_connections[cmd[1]])
     elif cmd[0] == "pong":
         if cmd[1] in open_connections:
-            input.rprint(f"pong! {pinged_peers[cmd[1]]}")
+            elapsed = (int(time.time()))*1000 - pinged_peers[cmd[1]]
+            input.rprint(f"pong! {elapsed}ms")
     elif cmd[0] == "msg":
-        if cmd[1] in pending_connections:
-            input.rprint(f"[{cmd[1]}][{cmd[2]}]:{line[len(cmd[1])+len(cmd[2])+5:]}") 
+        if cmd[1] in open_connections:
+            input.rprint(f"[{cmd[1]}][{cmd[2]}]:{line[len(cmd[1])+len(cmd[2])+len(cmd[0])+3:]}") 
 
 def msg_usr(msg:str,dest:tuple[str,int]):
-    send(f"msg {USERNAME} {datetime.now()} {msg}",dest)
+    send(f"msg {USERNAME} {now.time()} {msg}",dest)
 
 def ping(dest:tuple[str,int]):
-    pinged_peers[dest] = int(time.time())*1000
     send(f"ping {USERNAME}",dest)
 
 def pong(dest:tuple[str,int]):
