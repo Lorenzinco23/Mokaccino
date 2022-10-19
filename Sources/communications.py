@@ -33,6 +33,7 @@ pinged_peers:dict[tuple[str,int],int] = {}
 
 udp_socket = socket.socket(family=socket.AF_INET,type=socket.SOCK_DGRAM)
 udp_socket.settimeout(TIMEOUT)
+udp_socket.bind(("0.0.0.0",PORT))
 
 downstream_mutex = threading.Semaphore(1)
 
@@ -63,7 +64,7 @@ def parse_command(line:str):
         searchuser(cmd[1])
 
     elif cmd[0] == "msg":
-        msg_usr(line[len(cmd[1])+5:],cmd[1])
+        msg_usr(line[len(cmd[1])+5:],open_connections[cmd[1]])
 
     elif cmd[0] == "ping":
         send("ping ",open_connections[cmd[1]])
@@ -92,15 +93,16 @@ def parse_stream(line:str,src:tuple[str,int]):
     cmd[0] = cmd[0].lower()
 
     if cmd[0] == "connect" and config["autoconnect"]:
-        send(f"handshake {USERNAME}",cmd[1])
+        send(f"handshake {USERNAME}",src)
         pending_connections[cmd[1]] = src
     
     elif cmd[0] == "connect" and not config["autoconnect"]:
         input.rprint(f"User {src} wants to connect, to accept: type in | handshake {src[0]}")
+
     elif cmd[0] == "handshake":
         if cmd[1] in pending_connections:
-            send("connected",cmd[1])
-            msg_usr("Hi!",cmd[1])
+            send("connected",src)
+            msg_usr("Hi!",src)
         else: pass
     elif cmd[0] == "connected":
         if cmd[1] in pending_connections:
@@ -108,7 +110,7 @@ def parse_stream(line:str,src:tuple[str,int]):
         pending_connections.pop(cmd[1])
     elif cmd[0] == "ping":
         if cmd[1] in open_connections:
-            pong(cmd[1])
+            pong(open_connections[cmd[1]])
     elif cmd[0] == "pong":
         if cmd[1] in open_connections:
             input.rprint(f"pong! {pinged_peers[cmd[1]]}")
@@ -124,7 +126,7 @@ def ping(dest:tuple[str,int]):
     send(f"ping {USERNAME}",dest)
 
 def pong(dest:tuple[str,int]):
-    send(f"pong {USERNAME}")
+    send(f"pong {USERNAME}",dest)
 
 def send(message:str,dest:tuple[str,int]):
     global udp_socket
@@ -144,10 +146,10 @@ def receive():
             try:
                 msg,addr = udp_socket.recvfrom(2048)
                 
-                downstream_mutex.acquire()
+                #downstream_mutex.acquire()
                 input.rprint(f"Received: {msg.decode('ASCII')} from {addr}")
                 parse_stream(msg.decode("ASCII"),addr)
-                downstream_mutex.release()
+                #downstream_mutex.release()
             except TimeoutError:
                 pass
             
@@ -155,8 +157,6 @@ def receive():
         pass
 
 def start():
-    print(service.get_actions())
-    print(service.DeletePortMapping.get_input_arguments())
     '''service.AddPortMapping(
         NewRemoteHost="",
         NewExternalPort=config["port"],
